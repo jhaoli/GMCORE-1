@@ -1,14 +1,30 @@
 module const_mod
 
-  integer, parameter :: real_kind = 8
+  use, intrinsic :: ieee_arithmetic
 
-  real(real_kind), parameter :: pi = atan(1.0d0) * 4.0d0
-  real(real_kind), parameter :: pi2 = pi * 2
-  real(real_kind), parameter :: deg = 180.0d0 / pi
-  real(real_kind), parameter :: rad = pi / 180.0d0
-  real(real_kind), parameter :: omega = 2.0d0 * pi / 86400.0d0
-  real(real_kind), parameter :: radius = 6.37122d6
-  real(real_kind), parameter :: g = 9.80616d0
-  real(real_kind), parameter :: eps = epsilon(1.0d0)
+  integer, parameter :: r8 = 8
+
+  real(r8), parameter :: pi = atan(1.0_r8) * 4.0_r8
+  real(r8), parameter :: pi2 = pi * 2
+  real(r8), parameter :: pi05 = pi * 0.5_r8
+  real(r8), parameter :: deg = 180.0_r8 / pi
+  real(r8), parameter :: rad = pi / 180.0_r8
+  real(r8), parameter :: omega = 2.0_r8 * pi / 86400.0_r8
+  real(r8), parameter :: radius = 6.37122d6
+  real(r8), parameter :: g = 9.80616_r8
+  real(r8), parameter :: eps = epsilon(1.0_r8)
+  real(r8), parameter :: inf = huge(1.0_r8)
+  
+  integer, parameter :: nest_ratio = 3
+
+contains
+
+  pure logical function is_inf(x) result(res)
+
+    real(r8), intent(in) :: x
+
+    res = x - 1 == x
+
+  end function is_inf
 
 end module const_mod

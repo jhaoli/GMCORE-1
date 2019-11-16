@@ -10,11 +10,11 @@ module static_mod
 
   public static_type
   public static
-  public create_static
+  public static_init_root
 
   type static_type
     type(mesh_type), pointer :: mesh => null()
-    real(real_kind), allocatable :: hs(:,:)
+    real(r8), allocatable :: ghs(:,:)
   contains
     procedure :: init => static_init
     procedure :: clear => static_clear
@@ -25,22 +25,22 @@ module static_mod
 
 contains
 
-  subroutine create_static()
+  subroutine static_init_root()
 
     call static%init(mesh)
 
-  end subroutine create_static
+  end subroutine static_init_root
 
   subroutine static_init(this, mesh)
 
-    class(static_type), intent(inout) :: this
-    type(mesh_type), intent(in), target :: mesh
+    class(static_type), intent(inout)         :: this
+    type(mesh_type   ), intent(in   ), target :: mesh
 
     call this%clear()
 
     this%mesh => mesh
 
-    call allocate_array(mesh, this%hs, full_lon=.true., full_lat=.true.)
+    call allocate_array(mesh, this%ghs, full_lon=.true., full_lat=.true.)
 
   end subroutine static_init
 
@@ -48,7 +48,7 @@ contains
 
     class(static_type), intent(inout) :: this
 
-    if (allocated(this%hs)) deallocate(this%hs)
+    if (allocated(this%ghs)) deallocate(this%ghs)
 
   end subroutine static_clear
 
