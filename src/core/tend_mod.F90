@@ -2,6 +2,7 @@ module tend_mod
 
   use const_mod
   use mesh_mod
+  use namelist_mod
   use allocator_mod
 
   implicit none
@@ -10,22 +11,22 @@ module tend_mod
 
   public tend_type
   public tends
-  public create_tends
+  public tend_init_root
 
   type tend_type
     type(mesh_type), pointer :: mesh => null()
-    real(real_kind), allocatable, dimension(:,:) :: du
-    real(real_kind), allocatable, dimension(:,:) :: dv
-    real(real_kind), allocatable, dimension(:,:) :: dhd
+    real(r8), allocatable, dimension(:,:) :: du
+    real(r8), allocatable, dimension(:,:) :: dv
+    real(r8), allocatable, dimension(:,:) :: dgd
     ! Individual tendencies
-    real(real_kind), allocatable, dimension(:,:) :: qhv
-    real(real_kind), allocatable, dimension(:,:) :: qhu
-    real(real_kind), allocatable, dimension(:,:) :: dEdlon
-    real(real_kind), allocatable, dimension(:,:) :: dEdlat
-    real(real_kind), allocatable, dimension(:,:) :: div_mass_flux
-    ! Derived variables
-    real(real_kind), allocatable, dimension(:,:) :: dpvdlon
-    real(real_kind), allocatable, dimension(:,:) :: dpvdlat
+    real(r8), allocatable, dimension(:,:) :: qhv
+    real(r8), allocatable, dimension(:,:) :: qhu
+    real(r8), allocatable, dimension(:,:) :: dpedlon
+    real(r8), allocatable, dimension(:,:) :: dkedlon
+    real(r8), allocatable, dimension(:,:) :: dpedlat
+    real(r8), allocatable, dimension(:,:) :: dkedlat
+    real(r8), allocatable, dimension(:,:) :: dmfdlon
+    real(r8), allocatable, dimension(:,:) :: dmfdlat
   contains
     procedure :: init => tend_init
     procedure :: clear => tend_clear
@@ -36,38 +37,46 @@ module tend_mod
 
 contains
 
-  subroutine create_tends()
+  subroutine tend_init_root()
 
     integer i
 
     if (.not. allocated(tends)) then
-      allocate(tends(0:2))
+      select case (trim(time_scheme))
+      case ('pc2', 'rk2')
+        allocate(tends(3))
+      case ('rk3')
+        allocate(tends(4))
+      case ('rk4')
+        allocate(tends(5))
+      end select
       do i = lbound(tends, 1), ubound(tends, 1)
         call tends(i)%init(mesh)
       end do
     end if
 
-  end subroutine create_tends
+  end subroutine tend_init_root
 
   subroutine tend_init(this, mesh)
 
-    class(tend_type), intent(inout) :: this
-    type(mesh_type), intent(in), target :: mesh
+    class(tend_type), intent(inout)         :: this
+    type(mesh_type ), intent(in   ), target :: mesh
 
     call this%clear()
 
     this%mesh => mesh
 
-    call allocate_array(mesh, this%du           , half_lon=.true., full_lat=.true.)
-    call allocate_array(mesh, this%dv           , full_lon=.true., half_lat=.true.)
-    call allocate_array(mesh, this%dhd          , full_lon=.true., full_lat=.true.)
-    call allocate_array(mesh, this%qhu          , half_lon=.true., full_lat=.true.)
-    call allocate_array(mesh, this%qhv          , full_lon=.true., half_lat=.true.)
-    call allocate_array(mesh, this%dEdlon       , half_lon=.true., full_lon=.true.)
-    call allocate_array(mesh, this%dEdlat       , full_lon=.true., half_lon=.true.)
-    call allocate_array(mesh, this%div_mass_flux, full_lon=.true., full_lat=.true.)
-    call allocate_array(mesh, this%dpvdlon      , full_lon=.true., half_lat=.true.)
-    call allocate_array(mesh, this%dpvdlat      , half_lon=.true., full_lat=.true.)
+    call allocate_array(mesh, this%du     , half_lon=.true., full_lat=.true.)
+    call allocate_array(mesh, this%dv     , full_lon=.true., half_lat=.true.)
+    call allocate_array(mesh, this%dgd    , full_lon=.true., full_lat=.true.)
+    call allocate_array(mesh, this%qhu    , half_lon=.true., full_lat=.true.)
+    call allocate_array(mesh, this%qhv    , full_lon=.true., half_lat=.true.)
+    call allocate_array(mesh, this%dpedlon, half_lon=.true., full_lon=.true.)
+    call allocate_array(mesh, this%dkedlon, half_lon=.true., full_lon=.true.)
+    call allocate_array(mesh, this%dpedlat, full_lon=.true., half_lon=.true.)
+    call allocate_array(mesh, this%dkedlat, full_lon=.true., half_lon=.true.)
+    call allocate_array(mesh, this%dmfdlon, full_lon=.true., full_lat=.true.)
+    call allocate_array(mesh, this%dmfdlat, full_lon=.true., full_lat=.true.)
 
   end subroutine tend_init
 
@@ -75,16 +84,17 @@ contains
 
     class(tend_type), intent(inout) :: this
 
-    if (allocated(this%du           )) deallocate(this%du           )
-    if (allocated(this%dv           )) deallocate(this%dv           )
-    if (allocated(this%dhd          )) deallocate(this%dhd          )
-    if (allocated(this%qhu          )) deallocate(this%qhu          )
-    if (allocated(this%qhv          )) deallocate(this%qhv          )
-    if (allocated(this%dEdlon       )) deallocate(this%dEdlon       )
-    if (allocated(this%dEdlat       )) deallocate(this%dEdlat       )
-    if (allocated(this%div_mass_flux)) deallocate(this%div_mass_flux)
-    if (allocated(this%dpvdlon      )) deallocate(this%dpvdlon      )
-    if (allocated(this%dpvdlat      )) deallocate(this%dpvdlat      )
+    if (allocated(this%du     )) deallocate(this%du     )
+    if (allocated(this%dv     )) deallocate(this%dv     )
+    if (allocated(this%dgd    )) deallocate(this%dgd    )
+    if (allocated(this%qhu    )) deallocate(this%qhu    )
+    if (allocated(this%qhv    )) deallocate(this%qhv    )
+    if (allocated(this%dpedlon)) deallocate(this%dpedlon)
+    if (allocated(this%dpedlon)) deallocate(this%dkedlon)
+    if (allocated(this%dkedlat)) deallocate(this%dpedlat)
+    if (allocated(this%dkedlat)) deallocate(this%dkedlat)
+    if (allocated(this%dmfdlon)) deallocate(this%dmfdlon)
+    if (allocated(this%dmfdlat)) deallocate(this%dmfdlat)
 
   end subroutine tend_clear
 
