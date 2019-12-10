@@ -40,9 +40,10 @@ module state_mod
     real(r8), allocatable, dimension(:,:) :: ke
     real(r8) total_m
     real(r8) total_ke
+    real(r8) total_pe
     real(r8) total_e
     real(r8) total_av
-    real(r8) total_pe
+    real(r8) total_pes
   contains
     procedure :: init => state_init
     procedure :: clear => state_clear

@@ -151,20 +151,23 @@ contains
     state%total_ke = 0.0_r8
     do j = mesh%full_lat_start_idx_no_pole, mesh%full_lat_end_idx_no_pole
       do i = mesh%half_lon_start_idx, mesh%half_lon_end_idx
-        state%total_ke = state%total_ke + state%mf_lon_n(i,j) * state%u(i,j) * mesh%lon_edge_area(j) * 2
+        state%total_ke = state%total_ke + 0.5_r8 * state%mf_lon_n(i,j) * state%u(i,j) * mesh%lon_edge_area(j) * 2
       end do
     end do
     do j = mesh%half_lat_start_idx_no_pole, mesh%half_lat_end_idx_no_pole
       do i = mesh%full_lon_start_idx, mesh%full_lon_end_idx
-        state%total_ke = state%total_ke + state%mf_lat_n(i,j) * state%v(i,j) * mesh%lat_edge_area(j) * 2
+        state%total_ke = state%total_ke + 0.5_r8 * state%mf_lat_n(i,j) * state%v(i,j) * mesh%lat_edge_area(j) * 2
       end do
     end do
-    state%total_e = state%total_ke
+
+    state%total_pe = 0.0_r8
     do j = mesh%full_lat_start_idx, mesh%full_lat_end_idx
       do i = mesh%full_lon_start_idx, mesh%full_lon_end_idx
-        state%total_e = state%total_e + (state%gd(i,j)**2 / g + state%gd(i,j) * static%ghs(i,j) / g) * mesh%cell_area(j)
-      end do
-    end do
+        state%total_pe = state%total_pe + (state%gd(i,j)**2 / g * 0.5_r8 + state%gd(i,j) * static%ghs(i,j) / g) * mesh%cell_area(j)
+      end do 
+    end do 
+
+    state%total_e = state%total_ke + state%total_pe
 
     state%total_av = 0.0_r8
     do j = mesh%half_lat_start_idx, mesh%half_lat_end_idx
@@ -173,10 +176,10 @@ contains
       end do
     end do
 
-    state%total_pe = 0.0_r8
+    state%total_pes = 0.0_r8
     do j = mesh%half_lat_start_idx, mesh%half_lat_end_idx
       do i = mesh%half_lon_start_idx, mesh%half_lon_end_idx
-        state%total_pe = state%total_pe + state%m_vtx(i,j) * state%pv(i,j)**2 * 0.5_r8 * mesh%vertex_area(j)
+        state%total_pes = state%total_pes + state%m_vtx(i,j) * state%pv(i,j)**2 * 0.5_r8 * mesh%vertex_area(j)
       end do
     end do
 
@@ -198,7 +201,7 @@ contains
 
     call log_add_diag('total_m' , state%total_m )
     call log_add_diag('total_e' , state%total_e )
-    call log_add_diag('total_pe', state%total_pe)
+    call log_add_diag('total_pes', state%total_pes)
 
   end subroutine diagnose
 
@@ -451,7 +454,7 @@ contains
       end do
     end do
 
-    call damp_state(new_state)
+    ! call damp_state(new_state)
 
     call parallel_fill_halo(mesh, new_state%gd(:,:))
     call parallel_fill_halo(mesh, new_state%u (:,:))

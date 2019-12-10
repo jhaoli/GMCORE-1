@@ -721,7 +721,7 @@ contains
 
     integer i
 
-    do i = reduced_mesh%full_lon_start_idx, reduced_mesh%full_lon_end_idx
+    do i = reduced_mesh%half_lon_start_idx, reduced_mesh%half_lon_end_idx
 #ifdef STAGGER_V_ON_POLE
       reduced_state%mf_lon_t(i,buf_j,move) =                                                                                           &
         reduced_mesh%full_tangent_wgt(1,buf_j) * (reduced_state%mf_lat_n(i,buf_j  ,move) + reduced_state%mf_lat_n(i+1,buf_j  ,move)) + &
@@ -824,19 +824,25 @@ contains
 
     do i = reduced_mesh%half_lon_start_idx, reduced_mesh%half_lon_end_idx
 #ifdef STAGGER_V_ON_POLE
-      reduced_state%dpv_lon_n(i,buf_j,move) = 0.25_r8 * ( &
-        reduced_state%dpv_lat_t(i  ,buf_j  ,move) +       &
-        reduced_state%dpv_lat_t(i+1,buf_j  ,move) +       &
-        reduced_state%dpv_lat_t(i  ,buf_j+1,move) +       &
-        reduced_state%dpv_lat_t(i+1,buf_j+1,move)         &
-      )
+      ! reduced_state%dpv_lon_n(i,buf_j,move) = 0.25_r8 * ( &
+      !   reduced_state%dpv_lat_t(i  ,buf_j  ,move) +       &
+      !   reduced_state%dpv_lat_t(i+1,buf_j  ,move) +       &
+      !   reduced_state%dpv_lat_t(i  ,buf_j+1,move) +       &
+      !   reduced_state%dpv_lat_t(i+1,buf_j+1,move)         &
+      ! )
+      reduced_state%dpv_lon_n(i,buf_j,move) = &
+        reduced_mesh%full_tangent_wgt(1,buf_j) * (reduced_state%dpv_lat_t(i,buf_j  ,move) + reduced_state%dpv_lat_t(i+1,buf_j  ,move)) + &
+        reduced_mesh%full_tangent_wgt(2,buf_j) * (reduced_state%dpv_lat_t(i,buf_j+1,move) + reduced_state%dpv_lat_t(i+1,buf_j+1,move))
 #else
-      reduced_state%dpv_lon_n(i,buf_j,move) = 0.25_r8 * ( &
-        reduced_state%dpv_lat_t(i  ,buf_j-1,move) +       &
-        reduced_state%dpv_lat_t(i+1,buf_j-1,move) +       &
-        reduced_state%dpv_lat_t(i  ,buf_j  ,move) +       &
-        reduced_state%dpv_lat_t(i+1,buf_j  ,move)         &
-      )
+      ! reduced_state%dpv_lon_n(i,buf_j,move) = 0.25_r8 * ( &
+      !   reduced_state%dpv_lat_t(i  ,buf_j-1,move) +       &
+      !   reduced_state%dpv_lat_t(i+1,buf_j-1,move) +       &
+      !   reduced_state%dpv_lat_t(i  ,buf_j  ,move) +       &
+      !   reduced_state%dpv_lat_t(i+1,buf_j  ,move)         &
+      ! )
+      reduced_state%dpv_lon_n(i,buf_j,move) = &
+      reduced_mesh%full_tangent_wgt(1,buf_j) * (reduced_state%dpv_lat_t(i,buf_j-1, move) + reduced_state%dpv_lat_t(i+1,buf_j-1,move)) + &
+      reduced_mesh%full_tangent_wgt(2,buf_j) * (reduced_state%dpv_lat_t(i,buf_j  , move) + reduced_state%dpv_lat_t(i+1,buf_j  ,move))
 #endif
     end do
 

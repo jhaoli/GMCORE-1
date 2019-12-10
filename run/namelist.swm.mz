@@ -3,11 +3,14 @@ num_lon = 180
 num_lat = 90
 ! mountain_zonal_flow, rossby_haurwitz_wave
 test_case = 'mountain_zonal_flow'
-run_days = 25
-dt_in_seconds = 10
-pv_scheme = 2
-pv_pole_stokes = .true.
+run_days = 50
+dt_in_seconds = 100
+pv_scheme = 3
+pv_pole_stokes = .false.
 split_scheme = ''
-case_name = 'mz.180x90'
-history_interval = '6 hours'
+fast_cycles = 5
+case_name = 'mz.180x90.apvm.reduce.day50_pole-v'
+history_interval = '1 days'
+reduce_factors = 4, 4, 2, 2, 2
+!damp_order = 4
 /
