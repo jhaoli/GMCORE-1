@@ -99,8 +99,7 @@ contains
     call operators_prepare(states(old))
     call diagnose(states(old))
     call output(states(old), tends(old))
-    call log_print_diag(curr_time%isoformat())
-
+    ! call log_print_diag(curr_time%isoformat())
     do while (.not. time_is_finished())
       call time_integrate(dt, static, tends, states)
       if (time_is_alerted('print')) call log_print_diag(curr_time%isoformat())
@@ -169,10 +168,10 @@ contains
 
     state%total_e = state%total_ke + state%total_pe
 
-    state%total_av = 0.0_r8
+    state%total_pv = 0.0_r8
     do j = mesh%half_lat_start_idx, mesh%half_lat_end_idx
       do i = mesh%half_lon_start_idx, mesh%half_lon_end_idx
-        state%total_av = state%total_av + state%m_vtx(i,j) * state%pv(i,j) * mesh%vertex_area(j)
+        state%total_pv = state%total_pv + state%m_vtx(i,j) * state%pv(i,j) * mesh%vertex_area(j)
       end do
     end do
 
@@ -201,6 +200,7 @@ contains
 
     call log_add_diag('total_m' , state%total_m )
     call log_add_diag('total_e' , state%total_e )
+    ! call log_add_diag('total_pv', state%total_pv)
     call log_add_diag('total_pes', state%total_pes)
 
   end subroutine diagnose
@@ -454,17 +454,18 @@ contains
       end do
     end do
 
-    ! call damp_state(new_state)
+    call damp_state(new_state)
 
     call parallel_fill_halo(mesh, new_state%gd(:,:))
     call parallel_fill_halo(mesh, new_state%u (:,:))
     call parallel_fill_halo(mesh, new_state%v (:,:))
 
-    ! Do not forget to synchronize the mass on edge and vertex for diagnosing!
+    ! Do not forget to synchronize the mass on edge and vertex, and PV on vertex for diagnosing!
     call calc_m_lon_m_lat(new_state)
     call calc_mf_lon_n_mf_lat_n(new_state)
     call calc_mf_lon_t_mf_lat_t(new_state)
     call calc_m_vtx(new_state)
+    call calc_pv_on_vertex(new_state)
 
     if (pv_scheme == 4) call diagnose(new_state)
 

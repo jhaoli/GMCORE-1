@@ -42,7 +42,7 @@ module state_mod
     real(r8) total_ke
     real(r8) total_pe
     real(r8) total_e
-    real(r8) total_av
+    real(r8) total_pv
     real(r8) total_pes
   contains
     procedure :: init => state_init

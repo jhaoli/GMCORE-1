@@ -44,7 +44,7 @@ contains
       do i = 1, n
         g(i) = sum(f(i-ns:i+ns) * w(:2*ns+1))
       end do
-      g = g * (-1)**(order / 2 + 1) * dt / dx**order
+      g = g * (-1)**(order / 2 + 1) * a / dx**order
       do i = 1, n
         f(i) = f(i) + wgt * g(i)
       end do

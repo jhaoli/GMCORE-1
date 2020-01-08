@@ -25,6 +25,7 @@ module operators_mod
   public calc_mf_lon_n_mf_lat_n ! Same as above.
   public calc_mf_lon_t_mf_lat_t ! Same as above.
   public calc_m_vtx             ! Same as above.
+  public calc_pv_on_vertex      ! Same as above.
 
 contains
 

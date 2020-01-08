@@ -21,7 +21,7 @@ module namelist_mod
   character(30) :: split_scheme = ''
   character(30) :: time_scheme = 'pc2'
 
-  integer :: reduce_factors(20) = 0
+  integer :: reduce_factors(40) = 0
   integer :: damp_order = 4
   logical :: adaptive_damp = .true.
   

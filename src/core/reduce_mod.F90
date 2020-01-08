@@ -9,7 +9,6 @@ module reduce_mod
   use static_mod
   use state_mod
   use parallel_mod
-  use damp_mod
 
   implicit none
 
@@ -153,7 +152,7 @@ contains
     allocate(reduced_tend  (mesh%full_lat_start_idx:mesh%full_lat_end_idx))
 
     do j = 1, size(reduce_factors)
-      if (reduce_factors(j) == 0) exit
+      if (reduce_factors(j) == 0) cycle
       if (mod(mesh%num_full_lon, reduce_factors(j)) /= 0) then
         call log_error('Zonal reduce factor ' // to_string(reduce_factors(j)) // ' cannot divide zonal grid number ' // to_string(mesh%num_full_lon) // '!')
       end if
@@ -415,8 +414,16 @@ contains
     call apply_reduce(lbound(reduced_state%dpv_lat_n, 2), ubound(reduced_state%dpv_lat_n, 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_dpv_lat_n  , dt)
     call apply_reduce(lbound(reduced_state%dpv_lat_t, 2), ubound(reduced_state%dpv_lat_t, 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_dpv_lat_t  , dt)
     call apply_reduce(lbound(reduced_state%dpv_lon_n, 2), ubound(reduced_state%dpv_lon_n, 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_dpv_lon_n  , dt)
-    call apply_reduce(lbound(reduced_state%pv_lon   , 2), ubound(reduced_state%pv_lon   , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_pv_lon_apvm, dt)
-    call apply_reduce(lbound(reduced_state%pv_lat   , 2), ubound(reduced_state%pv_lat   , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_pv_lat_apvm, dt)
+    select case (pv_scheme)
+    case (1)
+      call apply_reduce(lbound(reduced_state%pv_lon   , 2), ubound(reduced_state%pv_lon   , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_pv_lon_midpoint, dt)
+      call apply_reduce(lbound(reduced_state%pv_lat   , 2), ubound(reduced_state%pv_lat   , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_pv_lat_midpoint, dt)
+    case (3)
+      call apply_reduce(lbound(reduced_state%pv_lon   , 2), ubound(reduced_state%pv_lon   , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_pv_lon_apvm, dt)
+      call apply_reduce(lbound(reduced_state%pv_lat   , 2), ubound(reduced_state%pv_lat   , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_pv_lat_apvm, dt)
+    case default
+      call log_error('Unknown PV scheme!')
+    end select
     call apply_reduce(lbound(reduced_state%ke       , 2), ubound(reduced_state%ke       , 2), j, raw_mesh, raw_state, reduced_mesh, reduced_state, reduce_ke         , dt)
 
 #ifdef STAGGER_V_ON_POLE
@@ -824,22 +831,10 @@ contains
 
     do i = reduced_mesh%half_lon_start_idx, reduced_mesh%half_lon_end_idx
 #ifdef STAGGER_V_ON_POLE
-      ! reduced_state%dpv_lon_n(i,buf_j,move) = 0.25_r8 * ( &
-      !   reduced_state%dpv_lat_t(i  ,buf_j  ,move) +       &
-      !   reduced_state%dpv_lat_t(i+1,buf_j  ,move) +       &
-      !   reduced_state%dpv_lat_t(i  ,buf_j+1,move) +       &
-      !   reduced_state%dpv_lat_t(i+1,buf_j+1,move)         &
-      ! )
       reduced_state%dpv_lon_n(i,buf_j,move) = &
         reduced_mesh%full_tangent_wgt(1,buf_j) * (reduced_state%dpv_lat_t(i,buf_j  ,move) + reduced_state%dpv_lat_t(i+1,buf_j  ,move)) + &
         reduced_mesh%full_tangent_wgt(2,buf_j) * (reduced_state%dpv_lat_t(i,buf_j+1,move) + reduced_state%dpv_lat_t(i+1,buf_j+1,move))
 #else
-      ! reduced_state%dpv_lon_n(i,buf_j,move) = 0.25_r8 * ( &
-      !   reduced_state%dpv_lat_t(i  ,buf_j-1,move) +       &
-      !   reduced_state%dpv_lat_t(i+1,buf_j-1,move) +       &
-      !   reduced_state%dpv_lat_t(i  ,buf_j  ,move) +       &
-      !   reduced_state%dpv_lat_t(i+1,buf_j  ,move)         &
-      ! )
       reduced_state%dpv_lon_n(i,buf_j,move) = &
       reduced_mesh%full_tangent_wgt(1,buf_j) * (reduced_state%dpv_lat_t(i,buf_j-1, move) + reduced_state%dpv_lat_t(i+1,buf_j-1,move)) + &
       reduced_mesh%full_tangent_wgt(2,buf_j) * (reduced_state%dpv_lat_t(i,buf_j  , move) + reduced_state%dpv_lat_t(i+1,buf_j  ,move))
@@ -863,19 +858,13 @@ contains
 
     do i = reduced_mesh%full_lon_start_idx, reduced_mesh%full_lon_end_idx
 #ifdef STAGGER_V_ON_POLE
-      reduced_state%dpv_lat_n(i,buf_j,move) = 0.25_r8 * ( &
-        reduced_state%dpv_lon_t(i-1,buf_j-1,move) +       &
-        reduced_state%dpv_lon_t(i  ,buf_j-1,move) +       &
-        reduced_state%dpv_lon_t(i-1,buf_j  ,move) +       &
-        reduced_state%dpv_lon_t(i  ,buf_j  ,move)         &
-      )
+      reduced_state%dpv_lat_n(i,buf_j,move) = &
+        reduced_mesh%half_tangent_wgt(1,buf_j) * (reduced_state%dpv_lon_t(i-1,buf_j-1,move) + reduced_state%dpv_lon_t(i,buf_j-1,move)) + &
+        reduced_mesh%half_tangent_wgt(2,buf_j) * (reduced_state%dpv_lon_t(i-1,buf_j  ,move) + reduced_state%dpv_lon_t(i,buf_j  ,move))
 #else
-      reduced_state%dpv_lat_n(i,buf_j,move) = 0.25_r8 * ( &
-        reduced_state%dpv_lon_t(i-1,buf_j  ,move) +       &
-        reduced_state%dpv_lon_t(i  ,buf_j  ,move) +       &
-        reduced_state%dpv_lon_t(i-1,buf_j+1,move) +       &
-        reduced_state%dpv_lon_t(i  ,buf_j+1,move)         &
-      )
+      reduced_state%dpv_lat_n(i,buf_j,move) = &
+        reduced_mesh%half_tangent_wgt(1,buf_j) * (reduced_state%dpv_lon_t(i-1,buf_j  ,move) + reduced_state%dpv_lon_t(i,buf_j  ,move)) + &
+        reduced_mesh%half_tangent_wgt(2,buf_j) * (reduced_state%dpv_lon_t(i-1,buf_j+1,move) + reduced_state%dpv_lon_t(i,buf_j+1,move))
 #endif
     end do
 
@@ -954,6 +943,66 @@ contains
     call parallel_fill_halo(reduced_mesh%halo_width, reduced_state%pv_lat(:,buf_j,move))
 
   end subroutine reduce_pv_lat_apvm
+
+  subroutine reduce_pv_lon_midpoint(j, buf_j, move, raw_mesh, raw_state, reduced_mesh, reduced_state, dt)
+
+    integer, intent(in) :: j
+    integer, intent(in) :: buf_j
+    integer, intent(in) :: move
+    type(mesh_type), intent(in) :: raw_mesh
+    type(state_type), intent(in) :: raw_state
+    type(reduced_mesh_type), intent(in) :: reduced_mesh
+    type(reduced_state_type), intent(inout) :: reduced_state
+    real(r8), intent(in) :: dt
+    
+    real(r8) u, v
+    integer i
+
+    do i = reduced_mesh%half_lon_start_idx, reduced_mesh%half_lon_end_idx
+      u = reduced_state%u(i,buf_j,move)
+      v = reduced_state%mf_lon_t(i,buf_j,move) / reduced_state%m_lon(i,buf_j,move)
+#ifdef STAGGER_V_ON_POLE
+      reduced_state%pv_lon(i,buf_j,move) = 0.5_r8 * (    &
+        reduced_state%pv(i,buf_j+1,move) +               &
+        reduced_state%pv(i,buf_j  ,move)                 &
+      )
+#else
+      reduced_state%pv_lon(i,buf_j,move) = 0.5_r8 * (    &
+        reduced_state%pv(i,buf_j-1,move) +               &
+        reduced_state%pv(i,buf_j  ,move)                 &
+      ) 
+#endif
+    end do
+    call parallel_fill_halo(reduced_mesh%halo_width, reduced_state%pv_lon(:,buf_j,move))
+
+  end subroutine reduce_pv_lon_midpoint
+
+  subroutine reduce_pv_lat_midpoint(j, buf_j, move, raw_mesh, raw_state, reduced_mesh, reduced_state, dt)
+
+    integer, intent(in) :: j
+    integer, intent(in) :: buf_j
+    integer, intent(in) :: move
+    type(mesh_type), intent(in) :: raw_mesh
+    type(state_type), intent(in) :: raw_state
+    type(reduced_mesh_type), intent(in) :: reduced_mesh
+    type(reduced_state_type), intent(inout) :: reduced_state
+    real(r8), intent(in) :: dt
+
+    real(r8) u, v
+    integer i
+
+
+    do i = reduced_mesh%full_lon_start_idx, reduced_mesh%full_lon_end_idx
+      u = reduced_state%mf_lat_t(i,buf_j,move) / reduced_state%m_lat(i,buf_j,move)
+      v = reduced_state%v(i,buf_j,move)
+      reduced_state%pv_lat(i,buf_j,move) = 0.5_r8 * (    &
+        reduced_state%pv(i  ,buf_j,move) +               &
+        reduced_state%pv(i-1,buf_j,move)                 &
+      )
+    end do
+    call parallel_fill_halo(reduced_mesh%halo_width, reduced_state%pv_lat(:,buf_j,move))
+
+  end subroutine reduce_pv_lat_midpoint
 
   subroutine reduce_ke(j, buf_j, move, raw_mesh, raw_state, reduced_mesh, reduced_state, dt)
 

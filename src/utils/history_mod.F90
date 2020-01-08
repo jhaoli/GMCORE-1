@@ -67,12 +67,13 @@ contains
     call fiona_add_var('h0', 'v'    , long_name='v wind component'         , units='m s-1' , dim_names=['lon ', 'lat ', 'time'])
     call fiona_add_var('h0', 'h'    , long_name='height'                   , units='m'     , dim_names=['lon ', 'lat ', 'time'])
     call fiona_add_var('h0', 'hs'   , long_name='surface height'           , units='m'     , dim_names=['lon ', 'lat ', 'time'])
-    call fiona_add_var('h0', 'pv'   , long_name='potential vorticity'      , units='s-1'   , dim_names=['ilon', 'ilat', 'time'])
+    call fiona_add_var('h0', 'pv'   , long_name='potential vorticity'      , units='m-1s-1', dim_names=['ilon', 'ilat', 'time'])
     call fiona_add_var('h0', 'tm'   , long_name='total mass'               , units='m'     , dim_names=['time'])
     call fiona_add_var('h0', 'tke'  , long_name='total kinetic'            , units='m4 s-4', dim_names=['time'], data_type='real(8)')
     call fiona_add_var('h0', 'tpe'  , long_name='total potential energy'   , units='m4 s-4', dim_names=['time'], data_type='real(8)')
     call fiona_add_var('h0', 'te'   , long_name='total energy'             , units='m4 s-4', dim_names=['time'], data_type='real(8)')
     call fiona_add_var('h0', 'tpes' , long_name='total potential enstrophy', units='m2 s-5', dim_names=['time'], data_type='real(8)')
+    call fiona_add_var('h0', 'tpv'  , long_name='total potential vorticity', units='s-1'   , dim_names=['time'], data_type='real(8)')
 
     call fiona_create_dataset('h1', desc=case_desc, file_prefix=trim(case_name))
     call fiona_add_att('h1', 'time_step_size', dt)
@@ -158,6 +159,7 @@ contains
     call fiona_output('h0', 'tpe' , state%total_pe)
     call fiona_output('h0', 'te'  , state%total_e)
     call fiona_output('h0', 'tpes', state%total_pes)
+    call fiona_output('h0', 'tpv' , state%total_pv)
     call fiona_end_output('h0')
 
   end subroutine history_write_state
